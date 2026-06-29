@@ -44,9 +44,17 @@ from custom_components.meteoswiss.const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# The forecast API occasionally reports this value (0x7FFF == SHRT_MAX) as a
-# "no data" sentinel for the current-weather icon.
-NO_ICON_SENTINEL = 32767
+# The forecast API reports this value (0x7FFF == SHRT_MAX) as a "no data"
+# sentinel -- both for icons and for numeric values (the hourly graph is padded
+# with it past the end of the real forecast).
+NO_DATA_SENTINEL = 32767
+
+
+def _value(value: float | None) -> float | None:
+    """Return None for missing numeric values (None or the 32767 sentinel)."""
+    if value is None or value == NO_DATA_SENTINEL:
+        return None
+    return value
 
 
 async def async_setup_entry(
@@ -66,7 +74,7 @@ def condition_from_icon(icon: int | None) -> str | None:
     otherwise not present in the mapping, so callers can fall back gracefully
     instead of surfacing an invalid condition.
     """
-    if icon is None or icon == NO_ICON_SENTINEL:
+    if icon is None or icon == NO_DATA_SENTINEL:
         return None
     mapped = CODE_TO_CONDITION_MAP.get(icon)
     if mapped is None:
@@ -267,12 +275,19 @@ class MeteoSwissWeather(
         fcdata_out: list[Forecast] = []
         for untyped_forecast in forecast.get("regionForecast") or []:
             day = cast(DayForecast, untyped_forecast)
+            temp = _value(day["temperatureMax"])
+            if temp is None:
+                continue
             data_out: Forecast = {
                 ATTR_FORECAST_TIME: day["dayDate"],
-                ATTR_FORECAST_NATIVE_TEMP: day["temperatureMax"],
-                ATTR_FORECAST_NATIVE_TEMP_LOW: day["temperatureMin"],
-                ATTR_FORECAST_NATIVE_PRECIPITATION: day["precipitation"],
+                ATTR_FORECAST_NATIVE_TEMP: temp,
             }
+            templow = _value(day["temperatureMin"])
+            if templow is not None:
+                data_out[ATTR_FORECAST_NATIVE_TEMP_LOW] = templow
+            precipitation = _value(day["precipitation"])
+            if precipitation is not None:
+                data_out[ATTR_FORECAST_NATIVE_PRECIPITATION] = precipitation
             cond = condition_from_icon(day.get("iconDay"))
             if cond is not None:
                 data_out[ATTR_FORECAST_CONDITION] = cond
@@ -299,12 +314,19 @@ class MeteoSwissWeather(
         start = max(0, future[0] - 1) if future else 0
         fcdata_out: list[Forecast] = []
         for forecast_hour in hourly[start:]:
+            temp = _value(forecast_hour["temperatureMean"])
+            if temp is None:
+                # The hourly graph is padded with the 32767 sentinel past the
+                # end of the real forecast; skip those entries.
+                continue
             when = forecast_hour["time"]
             data_out: Forecast = {
                 ATTR_FORECAST_TIME: when.isoformat(),
-                ATTR_FORECAST_NATIVE_TEMP: forecast_hour["temperatureMean"],
-                ATTR_FORECAST_NATIVE_PRECIPITATION: forecast_hour["precipitationMean"],
+                ATTR_FORECAST_NATIVE_TEMP: temp,
             }
+            precipitation = _value(forecast_hour["precipitationMean"])
+            if precipitation is not None:
+                data_out[ATTR_FORECAST_NATIVE_PRECIPITATION] = precipitation
             cond = cond_by_day.get(when.date().isoformat())
             if cond is not None:
                 data_out[ATTR_FORECAST_CONDITION] = cond

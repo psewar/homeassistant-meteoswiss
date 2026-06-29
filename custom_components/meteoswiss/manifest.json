@@ -2,17 +2,18 @@
     "domain": "meteoswiss",
     "name": "MeteoSwiss",
     "codeowners": [
-        "@Rudd-O"
+        "@Rudd-O",
+        "@psewar"
     ],
     "config_flow": true,
     "dependencies": [],
-    "documentation": "https://github.com/Rudd-O/homeassistant-meteoswiss",
+    "documentation": "https://github.com/psewar/homeassistant-meteoswiss",
     "iot_class": "cloud_polling",
-    "issue_tracker": "https://github.com/Rudd-O/homeassistant-meteoswiss/issues",
+    "issue_tracker": "https://github.com/psewar/homeassistant-meteoswiss/issues",
     "quality_scale": "silver",
     "requirements": [
         "hamsclientfork>=0.2.19",
         "geopy>=2.0"
     ],
-    "version": "1.4.0"
+    "version": "1.4.1"
 }

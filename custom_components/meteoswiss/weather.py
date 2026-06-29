@@ -180,9 +180,17 @@ class MeteoSwissWeather(
 
     @property
     def native_temperature(self) -> float | None:
-        return condition_name_to_first_value(
+        value = condition_name_to_first_value(
             self._condition_for_all_stations, "tre200s0"
         )
+        if value is None:
+            # Fall back to the forecast's current-weather temperature when no
+            # real-time station value is available.
+            forecast = self._forecast_data
+            if forecast:
+                current = forecast.get("currentWeather") or {}
+                value = _value(current.get("temperature"))
+        return value
 
     @property
     def native_pressure(self) -> float | None:

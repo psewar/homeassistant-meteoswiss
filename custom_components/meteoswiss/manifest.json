@@ -15,5 +15,5 @@
         "hamsclientfork>=0.2.19",
         "geopy>=2.0"
     ],
-    "version": "1.4.2"
+    "version": "1.5.0"
 }

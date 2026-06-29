@@ -69,6 +69,9 @@ async def async_setup_entry(
             + " — not providing precipitation sensor data."
         )
 
+    # One weather-warning sensor per config entry (independent of stations).
+    async_add_entities([MeteoSwissWarningSensor(entry.entry_id, c)], True)
+
 
 class MeteoSwissSensor(
     CoordinatorEntity[MeteoSwissDataUpdateCoordinator],
@@ -172,3 +175,83 @@ class MeteoSwissSensor(
         """Handle data update."""
         self._data = self.coordinator.data
         self.async_write_ha_state()
+
+
+# Best-effort mapping of the app API's warnType codes to hazard names. The raw
+# code is always kept in the attributes (type_code) so an unmapped/incorrect
+# entry stays transparent and easy to correct.
+WARN_TYPE_NAMES = {
+    1: "wind",
+    2: "thunderstorm",
+    3: "rain",
+    4: "snow",
+    5: "slippery_roads",
+    6: "frost",
+    7: "heat_wave",
+    8: "avalanches",
+    10: "forest_fire",
+    11: "flood",
+}
+
+
+class MeteoSwissWarningSensor(
+    CoordinatorEntity[MeteoSwissDataUpdateCoordinator],
+    SensorEntity,
+):
+    """Active MeteoSwiss weather warnings for the forecast location.
+
+    The state is the highest active warning level (MeteoSwiss scale 1-5, or 0
+    when there is no active warning). The individual warnings (hazard type and
+    level) are exposed as attributes. Warning data comes from the app API's
+    warningsOverview, surfaced via the coordinator.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Weather warning"
+    _attr_icon = "mdi:alert"
+
+    def __init__(
+        self,
+        integration_id: str,
+        coordinator: MeteoSwissDataUpdateCoordinator,
+    ):
+        super().__init__(coordinator)
+        self._attr_unique_id = "sensor.%s-warnings" % integration_id
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, integration_id)},
+            name=coordinator.data[CONF_FORECAST_NAME],
+            manufacturer="MeteoSwiss",
+            model="Weather forecast",
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url="https://www.meteoswiss.admin.ch/",
+        )
+
+    def _warnings(self) -> list[dict]:
+        data = self.coordinator.data
+        return (data.get("warnings") if data else None) or []
+
+    @property
+    def native_value(self) -> int:
+        levels = [
+            w["warnLevel"]
+            for w in self._warnings()
+            if isinstance(w.get("warnLevel"), int)
+        ]
+        return max(levels) if levels else 0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, typing.Any]:
+        warnings = [
+            {
+                "type": WARN_TYPE_NAMES.get(
+                    w.get("warnType"), "type_%s" % w.get("warnType")
+                ),
+                "type_code": w.get("warnType"),
+                "level": w.get("warnLevel"),
+            }
+            for w in self._warnings()
+        ]
+        return {
+            "warnings": warnings,
+            "warning_count": len(warnings),
+        }

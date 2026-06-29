@@ -8,12 +8,14 @@ from hamsclientfork.client import StationType
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from custom_components.meteoswiss import MeteoSwissDataUpdateCoordinator
 from custom_components.meteoswiss.const import (
+    CONF_FORECAST_NAME,
     CONF_POSTCODE,
     CONF_PRECIPITATION_STATION,
     CONF_REAL_TIME_NAME,
@@ -103,6 +105,16 @@ class MeteoSwissSensor(
             else CONF_PRECIPITATION_STATION
         ]
         self._attr_post_code = coordinator.data[CONF_POSTCODE]
+        # Attach to the same service device as the weather entity (matching
+        # identifiers) so all entities of this config entry are grouped.
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, integration_id)},
+            name=coordinator.data[CONF_FORECAST_NAME],
+            manufacturer="MeteoSwiss",
+            model="Weather forecast",
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url="https://www.meteoswiss.admin.ch/",
+        )
 
     @property
     def name(self) -> str:

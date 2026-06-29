@@ -25,6 +25,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import sun
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from custom_components.meteoswiss import (
@@ -145,6 +146,17 @@ class MeteoSwissWeather(
         self._attr_precipitation_station_name = coordinator.data[
             CONF_REAL_TIME_PRECIPITATION_NAME
         ]
+        # Group the weather entity and all real-time sensors of this config
+        # entry under a single service device (same identifiers everywhere),
+        # mirroring the Met.no integration's "Forecast" device.
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, integration_id)},
+            name=coordinator.data[CONF_FORECAST_NAME],
+            manufacturer="MeteoSwiss",
+            model="Weather forecast",
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url="https://www.meteoswiss.admin.ch/",
+        )
 
     # Data is read live from the coordinator so the entity always reflects the
     # latest poll.  SingleCoordinatorWeatherEntity takes care of writing state
@@ -163,10 +175,8 @@ class MeteoSwissWeather(
         data = self.coordinator.data
         return data.get("condition") if data else None
 
-    @property
-    def name(self) -> Any:
-        data = self.coordinator.data
-        return data.get(CONF_FORECAST_NAME) if data else None
+    # No name property: with _attr_has_entity_name = True and a device, the
+    # weather entity inherits the device name (the forecast location).
 
     @property
     def native_temperature(self) -> float | None:

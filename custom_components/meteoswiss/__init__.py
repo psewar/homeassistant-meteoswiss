@@ -140,6 +140,7 @@ class MeteoSwissClientResult(ClientResult):
     real_time_name: str
     precipitation_station: str
     real_time_precipitation_name: str
+    warnings: list[dict]
 
 
 class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResult]):
@@ -321,4 +322,10 @@ class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResu
         newdata[CONF_REAL_TIME_PRECIPITATION_NAME] = (
             self.real_time_precipitation_station_name
         )  # type:ignore[literal-required]
+        # The MeteoSwiss app API returns active weather warnings in the raw
+        # forecast payload (warningsOverview). The client library keeps the raw
+        # response on the client object but drops warnings from the typed
+        # result, so read them back here -- no extra HTTP request needed.
+        raw_forecast = getattr(self.client, "_forecast", None) or {}
+        newdata["warnings"] = raw_forecast.get("warningsOverview") or []
         return newdata

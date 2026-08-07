@@ -9,9 +9,8 @@ from async_timeout import timeout
 from hamsclientfork import meteoSwissClient
 from hamsclientfork.client import ClientResult
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.core import HomeAssistant as HomeAssistantType
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.issue_registry import IssueSeverity
 from homeassistant.helpers.typing import ConfigType
@@ -22,7 +21,6 @@ from homeassistant.helpers.update_coordinator import (
 
 from custom_components.meteoswiss.const import (
     CONF_FORECAST_NAME,
-    CONF_NAME,
     CONF_POSTCODE,
     CONF_PRECIPITATION_STATION,
     CONF_REAL_TIME_NAME,
@@ -120,7 +118,7 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def async_unload_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry,
@@ -134,12 +132,17 @@ async def async_unload_entry(hass: HomeAssistantType, entry: ConfigEntry) -> boo
 
 
 class MeteoSwissClientResult(ClientResult):
-    station: str
-    post_code: str
+    # Forecast attributes.
+    postcode: int  # e.g. 8005
     forecast_name: str
-    real_time_name: str
-    precipitation_station: str
-    real_time_precipitation_name: str
+    # Real-time weather station attributes.
+    station: str | None  # e.g. BLA
+    real_time_name: str | None
+    # Real-time precipitation station attributes.
+    precipitation_station: str | None  # e.g. BEL
+    real_time_precipitation_name: str | None
+    # Active weather warnings (MeteoSwiss warningsOverview), surfaced from the
+    # raw forecast payload by the coordinator.
     warnings: list[dict]
 
 
@@ -152,7 +155,7 @@ class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResu
         self,
         hass: HomeAssistant,
         update_interval: datetime.timedelta,
-        post_code: int,
+        postcode: int,
         forecast_name: str,
         weather_station: str | None,
         real_time_weather_station_name: str | None,
@@ -171,12 +174,12 @@ class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResu
             CONF_POSTCODE: False,
         }
         self.hass = hass
-        self.post_code = post_code
+        self.postcode = postcode
         self.forecast_name = forecast_name
         _LOGGER.debug(
             "Forecast %s will be provided for post code %s every %s",
             forecast_name,
-            post_code,
+            postcode,
             update_interval,
         )
 
@@ -207,7 +210,7 @@ class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResu
                 real_time_weather_station_name,
                 real_time_precipitation_station_name,
             ),
-            post_code,
+            postcode,
             weather_station if weather_station else "NO STATION",
             precipitation_station if precipitation_station else "NO STATION",
         )
@@ -253,7 +256,9 @@ class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResu
                         self.first_error[name] = time.time()
 
                     m = MAX_CONTINUOUS_ERROR_TIME
-                    last_error = time.time() - self.first_error[name]
+                    last_error: float = time.time() - cast(
+                        float, self.first_error[name]
+                    )
                     if not self.error_raised and last_error > m:
                         ir.async_create_issue(
                             self.hass,
@@ -282,24 +287,26 @@ class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResu
             # Oh no.  The forecast is empty.
             _LOGGER.warning(
                 "Post code %s provided us with no forecast",
-                self.post_code,
+                self.postcode,
             )
             if self.first_error[CONF_POSTCODE] is None:
                 self.first_error[CONF_POSTCODE] = time.time()
 
             m = MAX_CONTINUOUS_ERROR_TIME
-            last_error = time.time() - self.first_error[CONF_POSTCODE]
+            last_error: float = time.time() - cast(
+                float, self.first_error[CONF_POSTCODE]
+            )
             if not self.error_raised and last_error > m:
                 ir.async_create_issue(
                     self.hass,
                     DOMAIN,
-                    f"{self.post_code}_provides_no_forecast_{DOMAIN}",
+                    f"{self.postcode}_provides_no_forecast_{DOMAIN}",
                     is_fixable=False,
                     is_persistent=False,
                     severity=IssueSeverity.ERROR,
-                    translation_key="post_code_no_data",
+                    translation_key="postcode_no_data",
                     translation_placeholders={
-                        "post_code": self.post_code,
+                        "postcode": str(self.postcode),
                     },
                 )
                 self.error_raised[CONF_POSTCODE] = True
@@ -308,20 +315,20 @@ class MeteoSwissDataUpdateCoordinator(DataUpdateCoordinator[MeteoSwissClientResu
                 ir.async_delete_issue(
                     self.hass,
                     DOMAIN,
-                    f"{self.post_code}_provides_no_forecast_{DOMAIN}",
+                    f"{self.postcode}_provides_no_forecast_{DOMAIN}",
                 )
             self.first_error[CONF_POSTCODE] = None
             self.error_raised[CONF_POSTCODE] = False
 
         newdata = cast(MeteoSwissClientResult, data)
-        newdata[CONF_POSTCODE] = self.post_code  # type:ignore[literal-required]
-        newdata[CONF_FORECAST_NAME] = self.forecast_name  # type:ignore[literal-required]
-        newdata[CONF_STATION] = self.weather_station  # type:ignore[literal-required]
-        newdata[CONF_REAL_TIME_NAME] = self.real_time_weather_station_name  # type:ignore[literal-required]
-        newdata[CONF_PRECIPITATION_STATION] = self.precipitation_station  # type:ignore[literal-required]
+        newdata[CONF_POSTCODE] = self.postcode
+        newdata[CONF_FORECAST_NAME] = self.forecast_name
+        newdata[CONF_STATION] = self.weather_station
+        newdata[CONF_REAL_TIME_NAME] = self.real_time_weather_station_name
+        newdata[CONF_PRECIPITATION_STATION] = self.precipitation_station
         newdata[CONF_REAL_TIME_PRECIPITATION_NAME] = (
             self.real_time_precipitation_station_name
-        )  # type:ignore[literal-required]
+        )
         # The MeteoSwiss app API returns active weather warnings in the raw
         # forecast payload (warningsOverview). The client library keeps the raw
         # response on the client object but drops warnings from the typed

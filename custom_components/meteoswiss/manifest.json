@@ -12,8 +12,8 @@
     "issue_tracker": "https://github.com/psewar/homeassistant-meteoswiss/issues",
     "quality_scale": "silver",
     "requirements": [
-        "hamsclientfork>=0.2.19",
+        "hamsclientfork>=0.2.20",
         "geopy>=2.0"
     ],
-    "version": "1.5.0"
+    "version": "1.6.0"
 }

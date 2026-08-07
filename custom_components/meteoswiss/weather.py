@@ -41,6 +41,7 @@ from custom_components.meteoswiss.const import (
     CONF_STATION,
     Condition,
     DOMAIN,
+    STATION_URL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -234,16 +235,20 @@ class MeteoSwissWeather(
     def condition(self) -> str | None:
         """Return the current weather condition.
 
-        Uses the current-weather icon when available.  When the API does not
-        provide one (e.g. the 32767 sentinel) we fall back to today's daily
-        forecast icon so the entity still reports a sensible condition rather
-        than going unavailable.
+        Uses the current-weather icon when available.  When the legacy ``icon``
+        is missing or the 32767 sentinel we try the API's ``iconV2`` for the same
+        instant, and only then fall back to today's daily forecast icon, so the
+        entity still reports a sensible condition rather than going unavailable.
         """
         forecast = self._forecast_data
         if not forecast:
             return None
         current = forecast.get("currentWeather") or {}
         cond = condition_from_icon(current.get("icon"))
+        if cond is None:
+            # The legacy icon can be absent or the 32767 sentinel; the app API
+            # also carries an iconV2 for the current weather in the same codes.
+            cond = condition_from_icon(current.get("iconV2"))
         if cond is None:
             region = forecast.get("regionForecast") or []
             if region:
@@ -264,13 +269,12 @@ class MeteoSwissWeather(
                 self._attr_weather_station_name,
             )
         if self._attr_precipitation_station:
-            a += "  Real-time weather data from weather station %s (%s)." % (
+            a += "  Real-time precipitation data from precipitation station %s (%s)." % (
                 self._attr_precipitation_station,
                 self._attr_precipitation_station_name,
             )
         if self._attr_weather_station or self._attr_precipitation_station:
-            url = "https://rudd-o.com/meteostations"
-            a += "  Stations available at %s ." % (url,)
+            a += "  Stations available at %s ." % (STATION_URL,)
         else:
             a += "  No real-time stations used by this weather entry."
         return a

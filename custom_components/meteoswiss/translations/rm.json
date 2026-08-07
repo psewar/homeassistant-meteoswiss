@@ -8,9 +8,9 @@
             "title": "Meteo Stazione meteorologica svizra para dad esser sparida",
             "description": "La staziun da meteorologia a temp real MeteoSvizra nizzegia ({station}) na porscha naginas datas pli.\n\nCitads Actualmain cumpiglia la suletta pussaivladad da reparar l'integraziun da MeteoSvizra, tschernind ina nova staziun da meteorologia per propi.\n\n Fin che questa reparatura è fatga vegnan a mussar tut ils sensurs da l'aura reals e tut las reportaschas che derivan da questa staziun sco betg disponiblas."
         },
-        "post_code_no_data": {
+        "postcode_no_data": {
             "title": "MeteoSwiss appears not to provide forecasts for postal code",
-            "description": "The postal code {post_code} does not appear to have any forecast available.\n\nCurrently, the only repair possible involves removing and re-adding the MeteoSwiss integration, selecting a new post code.\n\nUntil this repair is made, the forecast will show as unavailable."
+            "description": "The postal code {postcode} does not appear to have any forecast available.\n\nCurrently, the only repair possible involves removing and re-adding the MeteoSwiss integration, selecting a new post code.\n\nUntil this repair is made, the forecast will show as unavailable."
         },
         "improperly_configured": {
             "title": "Meteo Integraziun svizra da configuraziun sbagliada",
@@ -27,7 +27,7 @@
             "cannot_query_postcode": "OpenStreetMap ha refusà d'enriclar il numer da posta per Vossa plazza; inditgai p.pl. las infurmaziuns a maun",
             "lat": "La lita furnida na croda betg tranter -90 y 90 grad",
             "lon": "La lunghezza furnida na croda betg tranter -180 y 180 grad",
-            "invalid_station_name": "Il num da la staziun è nunvalaivel; per plaschair controlla https://rudd-o.com/meteostations per la glista da las staziuns",
+            "invalid_station_name": "Il num da la staziun è nunvalaivel; per plaschair controlla {station_url} per la glista da las staziuns",
             "invalid_postcode": "Il numer da posta è nunvalaivel; questa integraziun funcziuna mo cun ils numers postals svizzers",
             "forecast_name_empty": "Problems na pon ins betg dir vids",
             "empty_name": "Il num da la display è vid",
@@ -58,7 +58,7 @@
                     "precipitation_station": "Staziun da precipitaziuns per propi",
                     "real_time_precipitation_name": "Drecipitaziuns en temp real"
                 },
-                "description": "La staziun meteorologica per propi serva a sondar l'aura actuala a la staziun e la furnescha sco sensurs. Eleger l'emprima varianta da la glista impedescha sensurs da l'aura en temp real.\n\nI vegn tschernida ina staziun meteorologica, serva ils nums da las unitads en temp real, il champ per numnar las unitads en temp real (sensurs).  Sch'i na vegn tschernida nagina staziun, ignoreschan ins ils nums dal sectur real.\nhttps://rudd-o.com/meteostations numna las staziuns meteorologicas che stattan a disposiziun.",
+                "description": "La staziun meteorologica per propi serva a sondar l'aura actuala a la staziun e la furnescha sco sensurs. Eleger l'emprima varianta da la glista impedescha sensurs da l'aura en temp real.\n\nI vegn tschernida ina staziun meteorologica, serva ils nums da las unitads en temp real, il champ per numnar las unitads en temp real (sensurs).  Sch'i na vegn tschernida nagina staziun, ignoreschan ins ils nums dal sectur real.\n{station_url} numna las staziuns meteorologicas che stattan a disposiziun.",
                 "title": "Aura per propi"
             }
         }
